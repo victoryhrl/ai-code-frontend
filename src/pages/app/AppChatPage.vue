@@ -602,6 +602,7 @@ const updatePreview = () => {
     const newPreviewUrl = getStaticPreviewUrl(codeGenType, appId.value)
     previewUrl.value = newPreviewUrl
     previewReady.value = true
+    console.log('预览URL:', newPreviewUrl)
   }
 }
 

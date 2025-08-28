@@ -116,6 +116,7 @@ import { useLoginUserStore } from '@/stores/loginUser.ts'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { listMyAppVoByPage } from '@/api/appController.ts'
+import { updateMyUser } from '@/api/userController.ts'
 import { onMounted } from 'vue'
 
 const loginUserStore = useLoginUserStore()
@@ -167,15 +168,10 @@ const loadUserApps = async () => {
       }))
       // 设置总条数
       pagination.total = response.data.data.total || 0
-      console.log('转换后的用户应用数据:', userApps.value);
     } else {
-      console.log('API返回的数据不符合预期', response);
       setMockData();
     }
   } catch (error) {
-    console.error('加载应用数据失败:', error);
-    message.error('加载应用数据失败，请重试');
-    // 如果API调用失败，使用模拟数据作为备用
     setMockData();
   }
 }
@@ -226,23 +222,6 @@ const handleSizeChange = (current: number, pageSize: number) => {
   loadUserApps()
 }
 
-// 格式化时间
-const formatTime = (time: string) => {
-  if (!time) return ''
-  // 简单的时间格式化
-  try {
-    const date = new Date(time)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hours}:${minutes}`
-  } catch {
-    return time
-  }
-}
-
 // 在组件挂载时加载用户应用数据
 onMounted(() => {
   console.log('组件挂载，开始加载用户应用数据');
@@ -253,19 +232,27 @@ onMounted(() => {
 const handleUpdateProfile = async () => {
   submitting.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 更新全局状态
-    const updatedUser = {
-      ...loginUserStore.loginUser,
+    // 调用真实的updateMyUser接口
+    const response = await updateMyUser({
       userName: formState.userName,
       userAvatar: formState.userAvatar,
       userProfile: formState.userProfile
-    }
-    loginUserStore.setLoginUser(updatedUser)
+    })
     
-    message.success('个人资料更新成功')
+    if (response.data && response.data.code === 0 && response.data.data) {
+      // 更新全局状态
+      const updatedUser = {
+        ...loginUserStore.loginUser,
+        userName: formState.userName,
+        userAvatar: formState.userAvatar,
+        userProfile: formState.userProfile
+      }
+      loginUserStore.setLoginUser(updatedUser)
+      
+      message.success('个人资料更新成功')
+    } else {
+      message.error(response.data?.message || '更新失败，请重试')
+    }
   } catch (error) {
     message.error('更新失败，请重试')
   } finally {
