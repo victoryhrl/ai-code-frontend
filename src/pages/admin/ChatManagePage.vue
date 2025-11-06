@@ -129,6 +129,8 @@ const fetchData = async () => {
   try {
     const res = await listAllChatHistoryByPageForAdmin({
       ...searchParams,
+      sortField: 'createTime',
+      sortOrder: 'descend',
     })
     if (res.data.data) {
       data.value = res.data.data.records ?? []

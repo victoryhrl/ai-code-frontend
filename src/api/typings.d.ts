@@ -61,6 +61,12 @@ declare namespace API {
     message?: string
   }
 
+  type BaseResponseListTeamUserVO = {
+    code?: number
+    data?: TeamUserVO[]
+    message?: string
+  }
+
   type BaseResponseLoginUserVO = {
     code?: number
     data?: LoginUserVO
@@ -85,6 +91,18 @@ declare namespace API {
     message?: string
   }
 
+  type BaseResponsePageTeam = {
+    code?: number
+    data?: PageTeam
+    message?: string
+  }
+
+  type BaseResponsePageTeamVO = {
+    code?: number
+    data?: PageTeamVO
+    message?: string
+  }
+
   type BaseResponsePageUser = {
     code?: number
     data?: PageUser
@@ -100,6 +118,18 @@ declare namespace API {
   type BaseResponseString = {
     code?: number
     data?: string
+    message?: string
+  }
+
+  type BaseResponseTeamUser = {
+    code?: number
+    data?: TeamUser
+    message?: string
+  }
+
+  type BaseResponseTeamVO = {
+    code?: number
+    data?: TeamVO
     message?: string
   }
 
@@ -142,10 +172,23 @@ declare namespace API {
   type chatToGenCodeParams = {
     appId: number
     message: string
+    isDeep: boolean
   }
 
   type DeleteRequest = {
     id?: number
+  }
+
+  type downloadAppCodeParams = {
+    appId: number
+  }
+
+  type executeWorkflowWithFluxParams = {
+    workflowRequest: WorkflowRequest
+  }
+
+  type executeWorkflowWithSseParams = {
+    workflowRequest: WorkflowRequest
   }
 
   type getAppVOByIdByAdminParams = {
@@ -156,12 +199,39 @@ declare namespace API {
     id: number
   }
 
+  type getTeamUserVOByIdParams = {
+    teamId: number
+  }
+
+  type getTeamVOByIdParams = {
+    id: number
+  }
+
   type getUserByIdParams = {
     id: number
   }
 
   type getUserVOByIdParams = {
     id: number
+  }
+
+  type IllustrationTask = {
+    query?: string
+  }
+
+  type ImageCollectionPlan = {
+    contentImageTasks?: ImageSearchTask[]
+    illustrationTasks?: IllustrationTask[]
+  }
+
+  type ImageResource = {
+    category?: 'CONTENT' | 'LOGO' | 'ILLUSTRATION' | 'ARCHITECTURE'
+    description?: string
+    url?: string
+  }
+
+  type ImageSearchTask = {
+    query?: string
   }
 
   type listAppChatHistoryParams = {
@@ -214,6 +284,34 @@ declare namespace API {
     pages?: number
   }
 
+  type PageTeam = {
+    records?: Team[]
+    total?: number
+    size?: number
+    current?: number
+    orders?: OrderItem[]
+    optimizeCountSql?: PageTeam
+    searchCount?: PageTeam
+    optimizeJoinOfCountSql?: boolean
+    maxLimit?: number
+    countId?: string
+    pages?: number
+  }
+
+  type PageTeamVO = {
+    records?: TeamVO[]
+    total?: number
+    size?: number
+    current?: number
+    orders?: OrderItem[]
+    optimizeCountSql?: PageTeamVO
+    searchCount?: PageTeamVO
+    optimizeJoinOfCountSql?: boolean
+    maxLimit?: number
+    countId?: string
+    pages?: number
+  }
+
   type PageUser = {
     records?: User[]
     total?: number
@@ -242,6 +340,12 @@ declare namespace API {
     pages?: number
   }
 
+  type QualityResult = {
+    isValid?: boolean
+    errors?: string[]
+    suggestions?: string[]
+  }
+
   type ServerSentEventString = true
 
   type serveStaticResource1Params = {
@@ -250,6 +354,106 @@ declare namespace API {
 
   type serveStaticResourceParams = {
     deployKey: string
+  }
+
+  type SseEmitter = {
+    timeout?: number
+  }
+
+  type Team = {
+    id?: number
+    teamName?: string
+    appId?: number
+    maxSize?: number
+    userId?: number
+    createTime?: string
+    editTime?: string
+    updateTime?: string
+    isDelete?: number
+  }
+
+  type TeamAddRequest = {
+    teamName?: string
+  }
+
+  type TeamCreateAppRequest = {
+    id?: number
+    prompt?: string
+  }
+
+  type TeamEditRequest = {
+    id?: number
+    teamName?: string
+  }
+
+  type TeamQueryRequest = {
+    current?: number
+    pageSize?: number
+    sortField?: string
+    sortOrder?: string
+    id?: number
+    teamName?: string
+    appId?: number
+    userId?: number
+  }
+
+  type TeamUpdateRequest = {
+    id?: number
+    teamName?: string
+  }
+
+  type TeamUser = {
+    id?: number
+    teamId?: number
+    userId?: number
+    teamRole?: string
+    createTime?: string
+    updateTime?: string
+  }
+
+  type TeamUserAddRequest = {
+    teamId?: number
+    userId?: number
+    teamRole?: string
+  }
+
+  type TeamUserEditRequest = {
+    id?: number
+    teamRole?: string
+  }
+
+  type TeamUserQueryRequest = {
+    current?: number
+    pageSize?: number
+    sortField?: string
+    sortOrder?: string
+    id?: number
+    teamId?: number
+    userId?: number
+    teamRole?: string
+  }
+
+  type TeamUserVO = {
+    id?: number
+    teamId?: number
+    userId?: number
+    teamRole?: string
+    createTime?: string
+    updateTime?: string
+    userVO?: UserVO
+    teamVO?: TeamVO
+  }
+
+  type TeamVO = {
+    id?: number
+    teamName?: string
+    appId?: number
+    maxSize?: number
+    userId?: number
+    createTime?: string
+    editTime?: string
+    updateTime?: string
+    user?: UserVO
   }
 
   type User = {
@@ -317,5 +521,27 @@ declare namespace API {
     userProfile?: string
     userRole?: string
     createTime?: string
+  }
+
+  type WorkflowContext = {
+    currentStep?: string
+    originalPrompt?: string
+    imageListStr?: string
+    imageList?: ImageResource[]
+    enhancedPrompt?: string
+    generationType?: 'HTML' | 'MULTI_FILE' | 'VUE_PROJECT'
+    qualityResult?: QualityResult
+    generatedCodeDir?: string
+    buildResultDir?: string
+    errorMessage?: string
+    imageCollectionPlan?: ImageCollectionPlan
+    contentImages?: ImageResource[]
+    illustrations?: ImageResource[]
+  }
+
+  type WorkflowRequest = {
+    prompt?: string
+    appId?: number
+    isDeep?: boolean
   }
 }

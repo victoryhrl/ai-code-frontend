@@ -5,9 +5,13 @@ import UserRegisterPage from '@/pages/user/UserRegisterPage.vue'
 import UserProfilePage from '@/pages/user/UserProfilePage.vue'
 import UserManagePage from '@/pages/admin/UserManagePage.vue'
 import AppManagePage from '@/pages/admin/AppManagePage.vue'
+import TeamManagePage from '@/pages/admin/TeamManagePage.vue'
 import AppChatPage from '@/pages/app/AppChatPage.vue'
 import AppEditPage from '@/pages/app/AppEditPage.vue'
 import ChatManagePage from '@/pages/admin/ChatManagePage.vue'
+import CreateTeam from '@/pages/team/CreateTeam.vue'
+import MyTeams from '@/pages/team/MyTeams.vue'
+import TeamDetail from '@/pages/team/TeamDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,7 +26,16 @@ const router = createRouter({
       name: '用户登录',
       component: UserLoginPage,
     },
-    {      path: '/user/register',      name: '用户注册',      component: UserRegisterPage,    },    {      path: '/user/profile',      name: '个人中心',      component: UserProfilePage,    },
+    {   
+      path: '/user/register',      
+      name: '用户注册',      
+      component: UserRegisterPage,    
+    },    
+    {      
+      path: '/user/profile',     
+      name: '个人中心',      
+      component: UserProfilePage,    
+    },
     {
       path: '/admin/userManage',
       name: '用户管理',
@@ -32,6 +45,11 @@ const router = createRouter({
       path: '/admin/appManage',
       name: '应用管理',
       component: AppManagePage,
+    },
+    {
+      path: '/admin/teamManage',
+      name: '团队管理',
+      component: TeamManagePage,
     },
     {
       path: '/app/chat/:id',
@@ -48,7 +66,21 @@ const router = createRouter({
       name: '对话管理',
       component: ChatManagePage,
     },
-
+    {
+      path: '/team/create',
+      name: '创建团队',
+      component: CreateTeam,
+    },
+    {      
+      path: '/team/my',      
+      name: '我的团队',      
+      component: MyTeams,    
+    },
+    {      
+      path: '/team/detail/:id',      
+      name: '团队详情',      
+      component: TeamDetail,    
+    },
   ],
 })
 

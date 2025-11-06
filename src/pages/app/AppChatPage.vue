@@ -33,7 +33,6 @@
           ghost
           @click="downloadCode"
           :loading="downloading"
-          :disabled="!isOwner"
           class="custom-button ghost-button"
         >
           <template #icon>
@@ -134,19 +133,7 @@
                 :disabled="isGenerating || !isOwner"
               />
             </div>
-            
-            <a-tooltip v-if="!isOwner" title="无法在别人的作品下对话哦~" placement="top">
-              <a-textarea
-                v-model:value="userInput"
-                :placeholder="getInputPlaceholder()"
-                :rows="4"
-                :maxlength="1000"
-                @keydown.enter.prevent="sendMessage"
-                :disabled="isGenerating || !isOwner"
-              />
-            </a-tooltip>
             <a-textarea
-              v-else
               v-model:value="userInput"
               :placeholder="getInputPlaceholder()"
               :rows="4"
@@ -160,7 +147,6 @@
                 type="primary"
                 @click="sendMessage"
                 :loading="isGenerating"
-                :disabled="!isOwner"
               >
                 <template #icon>
                   <SendOutlined />
@@ -562,6 +548,30 @@ const generateCode = async (userMessage: string, aiMessageIndex: number) => {
         updatePreview()
       }, 1000)
     })
+
+    // 处理business-error事件（后端限流等错误）
+    eventSource.addEventListener('business-error', function (event: MessageEvent) {
+      if (streamCompleted) return
+
+      try {
+        const errorData = JSON.parse(event.data)
+        console.error('SSE业务错误事件:', errorData)
+
+        // 显示具体的错误信息
+        const errorMessage = errorData.message || '生成过程中出现错误'
+        messages.value[aiMessageIndex].content = `❌ ${errorMessage}`
+        messages.value[aiMessageIndex].loading = false
+        message.error(errorMessage)
+
+        streamCompleted = true
+        isGenerating.value = false
+        eventSource?.close()
+      } catch (parseError) {
+        console.error('解析错误事件失败:', parseError, '原始数据:', event.data)
+        handleError(new Error('服务器返回错误'), aiMessageIndex)
+      }
+    })
+
 
     // 处理错误
     eventSource.onerror = function () {
