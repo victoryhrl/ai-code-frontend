@@ -51,8 +51,8 @@
 
     <!-- 主要内容区域 -->
     <div class="main-content">
-      <!-- 左侧对话区域 -->
-      <div class="chat-section card-container">
+      <!-- 左侧对话区域 (绑定 collapsed 类控制收起) -->
+      <div class="chat-section card-container" :class="{ 'collapsed': activeTab === 'code' }">
         <!-- 消息区域 -->
         <div class="messages-container" ref="messagesContainer">
           <!-- 加载更多按钮 -->
@@ -156,48 +156,146 @@
           </div>
         </div>
       </div>
-      <!-- 右侧网页展示区域 -->
-      <div class="preview-section card-container">
+
+      <!-- 右侧网页/代码展示区域 (绑定 expanded 类控制展开) -->
+      <div class="preview-section card-container" :class="{ 'expanded': activeTab === 'code' }">
         <div class="preview-header">
-          <h3>生成后的网页展示</h3>
-          <div class="preview-actions">
-            <a-button
-              v-if="isOwner && previewUrl"
-              type="link"
-              :danger="isEditMode"
-              @click="toggleEditMode"
-              :class="{ 'edit-mode-active': isEditMode }"
-              style="padding: 0; height: auto; margin-right: 12px"
+          <!-- 头部 Tab 切换 -->
+          <div class="header-tabs">
+            <div 
+              class="tab-item" 
+              :class="{ active: activeTab === 'preview' }"
+              @click="handleTabChange('preview')"
             >
-              <template #icon>
-                <EditOutlined />
-              </template>
-              {{ isEditMode ? '退出编辑' : '编辑模式' }}
-            </a-button>
-            <a-button v-if="previewUrl" type="link" @click="openInNewTab">
-              <template #icon>
-                <ExportOutlined />
-              </template>
-              新窗口打开
-            </a-button>
+              <EyeOutlined /> 预览模式
+            </div>
+            <div 
+              class="tab-item" 
+              :class="{ active: activeTab === 'code' }"
+              @click="handleTabChange('code')"
+            >
+              <CodeOutlined /> 代码编辑
+            </div>
+          </div>
+
+          <div class="preview-actions">
+            <!-- 代码模式下的操作按钮 -->
+            <template v-if="activeTab === 'code'">
+               <!-- 提示信息 -->
+               <span v-if="hasUnsavedChanges(currentFilePath)" class="unsaved-tip">
+                 <InfoCircleOutlined /> 已暂存(Ctrl+S)，点击右侧按钮部署
+               </span>
+               <a-button 
+                 type="primary" 
+                 size="small" 
+                 @click="saveAndRunCode" 
+                 :loading="isSaving"
+                 :disabled="!currentFilePath"
+                 class="save-code-btn"
+               >
+                <template #icon><SaveOutlined /></template>
+                保存并运行
+              </a-button>
+            </template>
+
+            <!-- 预览模式下的操作按钮 -->
+            <template v-else>
+              <a-button
+                v-if="isOwner && previewUrl"
+                type="link"
+                :danger="isEditMode"
+                @click="toggleEditMode"
+                :class="{ 'edit-mode-active': isEditMode }"
+                style="padding: 0; height: auto; margin-right: 12px"
+              >
+                <template #icon>
+                  <EditOutlined />
+                </template>
+                {{ isEditMode ? '退出编辑' : '编辑模式' }}
+              </a-button>
+              <a-button v-if="previewUrl" type="link" @click="openInNewTab">
+                <template #icon>
+                  <ExportOutlined />
+                </template>
+                新窗口打开
+              </a-button>
+            </template>
           </div>
         </div>
+
         <div class="preview-content">
-          <div v-if="!previewUrl && !isGenerating" class="preview-placeholder">
-            <div class="placeholder-icon">🌐</div>
-            <p>网站文件生成完成后将在这里展示</p>
+          <!-- 1. 预览模式内容 -->
+          <div v-show="activeTab === 'preview'" class="preview-iframe-container">
+            <div v-if="!previewUrl && !isGenerating" class="preview-placeholder">
+              <div class="placeholder-icon">🌐</div>
+              <p>网站文件生成完成后将在这里展示</p>
+            </div>
+            <div v-else-if="isGenerating" class="preview-loading">
+              <a-spin size="large" />
+              <p>正在生成网站...</p>
+            </div>
+            <iframe
+              v-else
+              :src="previewUrl"
+              class="preview-iframe"
+              frameborder="0"
+              @load="onIframeLoad"
+            ></iframe>
           </div>
-          <div v-else-if="isGenerating" class="preview-loading">
-            <a-spin size="large" />
-            <p>正在生成网站...</p>
+
+          <!-- 2. 代码编辑模式内容 -->
+          <div v-show="activeTab === 'code'" class="code-editor-container">
+            <!-- 左侧文件树 -->
+            <div class="file-tree-sidebar">
+              <a-directory-tree
+                v-if="fileTreeData.length"
+                v-model:expandedKeys="expandedKeys"
+                v-model:selectedKeys="selectedKeys"
+                :tree-data="fileTreeData"
+                @select="onSelectFile"
+                :height="500" 
+                :virtual="true"
+              >
+                <!-- 自定义树节点标题，显示未保存状态 -->
+                <template #title="{ title, key }">
+                  <span class="tree-node-title">
+                    {{ title }}
+                    <span v-if="modifiedKeys.has(key)" class="modified-indicator">*</span>
+                  </span>
+                </template>
+              </a-directory-tree>
+              <div v-else class="empty-tree">
+                <a-spin v-if="isGenerating" />
+                <span v-else>点击加载文件...</span>
+              </div>
+            </div>
+            
+            <!-- 右侧编辑器 -->
+            <div class="code-editor-main">
+              <div v-if="!currentFilePath" class="editor-placeholder">
+                <FileOutlined style="font-size: 48px; margin-bottom: 16px; opacity: 0.5" />
+                <p>请从左侧选择文件进行编辑</p>
+              </div>
+              <a-spin :spinning="isCodeLoading" wrapperClassName="editor-spin-wrapper">
+                 <VueMonacoEditor
+                  v-if="currentFilePath"
+                  v-model:value="currentCode"
+                  theme="vs-light" 
+                  :options="{
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    scrollBeyondLastLine: false,
+                    readOnly: isGenerating || isSaving
+                  }"
+                  :language="editorLanguage" 
+                  height="100%"
+                  style="height: 100%"
+                  @mount="handleEditorMount"
+                />
+              </a-spin>
+            </div>
           </div>
-          <iframe
-            v-else
-            :src="previewUrl"
-            class="preview-iframe"
-            frameborder="0"
-            @load="onIframeLoad"
-          ></iframe>
         </div>
       </div>
     </div>
@@ -221,7 +319,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, computed } from 'vue'
+import { ref, onMounted, nextTick, onUnmounted, computed, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useLoginUserStore } from '@/stores/loginUser'
@@ -229,6 +327,9 @@ import {
   getAppVoById,
   deployApp as deployAppApi,
   deleteApp as deleteAppApi,
+  getFileTree,
+  getAppCodeContent,
+  updateAppCode
 } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import { CodeGenTypeEnum, formatCodeGenType } from '@/utils/codeGenTypes'
@@ -241,6 +342,10 @@ import aiAvatar from '@/assets/aiAvatar.png'
 import { API_BASE_URL, getStaticPreviewUrl } from '@/config/env'
 import { VisualEditor, type ElementInfo } from '@/utils/visualEditor'
 
+// 引入 Monaco Editor 相关
+import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
+import type { DataNode } from 'ant-design-vue/es/tree'
+
 import {
   CloudUploadOutlined,
   SendOutlined,
@@ -248,6 +353,10 @@ import {
   InfoCircleOutlined,
   DownloadOutlined,
   EditOutlined,
+  CodeOutlined,
+  EyeOutlined,
+  SaveOutlined,
+  FileOutlined
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
@@ -298,6 +407,38 @@ const visualEditor = new VisualEditor({
   onElementSelected: (elementInfo: ElementInfo) => {
     selectedElementInfo.value = elementInfo
   },
+})
+
+// --- 代码编辑相关状态 ---
+const activeTab = ref<'preview' | 'code'>('preview') // 当前标签页
+const fileTreeData = ref<DataNode[]>([]) // 文件树数据
+const expandedKeys = ref<string[]>([]) // 展开的节点
+const selectedKeys = ref<string[]>([]) // 选中的文件
+const currentCode = ref('') // 当前编辑器中的代码
+const currentFilePath = ref('') // 当前编辑的文件路径
+const isCodeLoading = ref(false) // 加载文件内容loading
+const isSaving = ref(false) // 保存代码loading
+
+// 新增：本地暂存（Ctrl+S）相关状态
+const stagedFiles = ref<Map<string, string>>(new Map()) // 存储暂存的文件内容
+const modifiedKeys = ref<Set<string>>(new Set()) // 存储有变动的文件路径（用于显示 * 号）
+const originalFileContent = ref<Map<string, string>>(new Map()) // 存储文件从后端拉取的原始内容
+
+// 计算编辑器语言
+const editorLanguage = computed(() => {
+  if (!currentFilePath.value) return 'javascript'
+  const ext = currentFilePath.value.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'html': return 'html'
+    case 'css': return 'css'
+    case 'json': return 'json'
+    case 'vue': return 'html' 
+    case 'ts': return 'typescript'
+    case 'java': return 'java'
+    case 'py': return 'python'
+    case 'md': return 'markdown'
+    default: return 'javascript'
+  }
 })
 
 // 权限相关
@@ -393,7 +534,6 @@ const fetchAppInfo = async () => {
         updatePreview()
       }
       // 检查是否需要自动发送初始提示词
-      // 只有在是自己的应用且没有对话历史时才自动发送
       if (
         appInfo.value.initPrompt &&
         isOwner.value &&
@@ -443,8 +583,7 @@ const sendMessage = async () => {
     return
   }
 
-  let message = userInput.value.trim()
-  // 如果有选中的元素，将元素信息添加到提示词中
+  let messageText = userInput.value.trim()
   if (selectedElementInfo.value) {
     let elementContext = `\n\n选中元素信息：`
     if (selectedElementInfo.value.pagePath) {
@@ -454,16 +593,14 @@ const sendMessage = async () => {
     if (selectedElementInfo.value.textContent) {
       elementContext += `\n- 当前内容: ${selectedElementInfo.value.textContent.substring(0, 100)}`
     }
-    message += elementContext
+    messageText += elementContext
   }
   userInput.value = ''
-  // 添加用户消息（包含元素信息）
   messages.value.push({
     type: 'user',
-    content: message,
+    content: messageText,
   })
 
-  // 发送消息后，清除选中元素并退出编辑模式
   if (selectedElementInfo.value) {
     clearSelectedElement()
     if (isEditMode.value) {
@@ -471,7 +608,6 @@ const sendMessage = async () => {
     }
   }
 
-  // 添加AI消息占位符
   const aiMessageIndex = messages.value.length
   messages.value.push({
     type: 'ai',
@@ -482,21 +618,17 @@ const sendMessage = async () => {
   await nextTick()
   scrollToBottom()
 
-  // 开始生成
   isGenerating.value = true
-  await generateCode(message, aiMessageIndex)
+  await generateCode(messageText, aiMessageIndex)
 }
 
-// 生成代码 - 使用 EventSource 处理流式响应
+// 生成代码
 const generateCode = async (userMessage: string, aiMessageIndex: number) => {
   let eventSource: EventSource | null = null
   let streamCompleted = false
 
   try {
-    // 获取 axios 配置的 baseURL
     const baseURL = request.defaults.baseURL || API_BASE_URL
-
-    // 构建URL参数
     const params = new URLSearchParams({
       appId: appId.value || '',
       message: userMessage,
@@ -505,23 +637,17 @@ const generateCode = async (userMessage: string, aiMessageIndex: number) => {
 
     const url = `${baseURL}/app/chat/gen/code?${params}`
 
-    // 创建 EventSource 连接
     eventSource = new EventSource(url, {
       withCredentials: true,
     })
 
     let fullContent = ''
 
-    // 处理接收到的消息
     eventSource.onmessage = function (event) {
       if (streamCompleted) return
-
       try {
-        // 解析JSON包装的数据
         const parsed = JSON.parse(event.data)
         const content = parsed.d
-
-        // 拼接内容
         if (content !== undefined && content !== null) {
           fullContent += content
           messages.value[aiMessageIndex].content = fullContent
@@ -534,57 +660,53 @@ const generateCode = async (userMessage: string, aiMessageIndex: number) => {
       }
     }
 
-    // 处理done事件
     eventSource.addEventListener('done', function () {
       if (streamCompleted) return
-
       streamCompleted = true
       isGenerating.value = false
       eventSource?.close()
-
-      // 延迟更新预览，确保后端已完成处理
       setTimeout(async () => {
         await fetchAppInfo()
         updatePreview()
+        if (activeTab.value === 'code') {
+          loadFileTree()
+          // 生成新代码后清空本地缓存，避免冲突
+          stagedFiles.value.clear()
+          modifiedKeys.value.clear()
+        }
       }, 1000)
     })
 
-    // 处理business-error事件（后端限流等错误）
     eventSource.addEventListener('business-error', function (event: MessageEvent) {
       if (streamCompleted) return
-
       try {
         const errorData = JSON.parse(event.data)
-        console.error('SSE业务错误事件:', errorData)
-
-        // 显示具体的错误信息
         const errorMessage = errorData.message || '生成过程中出现错误'
         messages.value[aiMessageIndex].content = `❌ ${errorMessage}`
         messages.value[aiMessageIndex].loading = false
         message.error(errorMessage)
-
         streamCompleted = true
         isGenerating.value = false
         eventSource?.close()
       } catch (parseError) {
-        console.error('解析错误事件失败:', parseError, '原始数据:', event.data)
         handleError(new Error('服务器返回错误'), aiMessageIndex)
       }
     })
 
-
-    // 处理错误
     eventSource.onerror = function () {
       if (streamCompleted || !isGenerating.value) return
-      // 检查是否是正常的连接关闭
       if (eventSource?.readyState === EventSource.CONNECTING) {
         streamCompleted = true
         isGenerating.value = false
         eventSource?.close()
-
         setTimeout(async () => {
           await fetchAppInfo()
           updatePreview()
+          if (activeTab.value === 'code') {
+            loadFileTree()
+            stagedFiles.value.clear()
+            modifiedKeys.value.clear()
+          }
         }, 1000)
       } else {
         handleError(new Error('SSE连接错误'), aiMessageIndex)
@@ -612,7 +734,6 @@ const updatePreview = () => {
     const newPreviewUrl = getStaticPreviewUrl(codeGenType, appId.value)
     previewUrl.value = newPreviewUrl
     previewReady.value = true
-    console.log('预览URL:', newPreviewUrl)
   }
 }
 
@@ -640,17 +761,14 @@ const downloadCode = async () => {
     if (!response.ok) {
       throw new Error(`下载失败: ${response.status}`)
     }
-    // 获取文件名
     const contentDisposition = response.headers.get('Content-Disposition')
     const fileName = contentDisposition?.match(/filename="(.+)"/)?.[1] || `app-${appId.value}.zip`
-    // 下载文件
     const blob = await response.blob()
     const downloadUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = downloadUrl
     link.download = fileName
     link.click()
-    // 清理
     URL.revokeObjectURL(downloadUrl)
     message.success('代码下载成功')
   } catch (error) {
@@ -741,13 +859,11 @@ const deleteApp = async () => {
 
 // 可视化编辑相关函数
 const toggleEditMode = () => {
-  // 检查 iframe 是否已经加载
   const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
   if (!iframe) {
     message.warning('请等待页面加载完成')
     return
   }
-  // 确保 visualEditor 已初始化
   if (!previewReady.value) {
     message.warning('请等待页面加载完成')
     return
@@ -768,19 +884,138 @@ const getInputPlaceholder = () => {
   return '请描述你想生成的网站，越详细效果越好哦'
 }
 
-// 页面加载时获取应用信息
+// --- 代码编辑相关逻辑 ---
+
+// 1. 获取文件树
+const loadFileTree = async () => {
+  if (!appId.value) return
+  try {
+    const res = await getFileTree({ appId: appId.value })
+    if (res.data.code === 0) {
+      fileTreeData.value = res.data.data
+      if (fileTreeData.value.length > 0) {
+        expandedKeys.value = [fileTreeData.value[0].key as string]
+      }
+    }
+  } catch (error) {
+    console.error('获取文件树失败', error)
+    message.error('无法加载项目文件结构')
+  }
+}
+
+// 2. 点击文件树节点，加载代码
+const onSelectFile = async (keys: string[], info: any) => {
+  if (keys.length === 0 || !info.node.isLeaf) return
+  
+  const path = keys[0]
+  if (path === currentFilePath.value) return
+
+  // 1. 如果该文件在本地暂存中有记录，直接使用暂存内容
+  if (stagedFiles.value.has(path)) {
+    currentCode.value = stagedFiles.value.get(path)!
+    currentFilePath.value = path
+    return
+  }
+
+  // 2. 否则从后端拉取
+  isCodeLoading.value = true
+  try {
+    const res = await getAppCodeContent({ 
+      appId: appId.value, 
+      filePath: path 
+    })
+    if (res.data.code === 0) {
+      currentCode.value = res.data.data
+      currentFilePath.value = path
+      // 记录原始内容，用于比对
+      originalFileContent.value.set(path, res.data.data)
+    }
+  } catch (error) {
+    console.error('读取文件失败', error)
+    message.error('读取文件内容失败')
+  } finally {
+    isCodeLoading.value = false
+  }
+}
+
+// 3. 处理编辑器挂载，绑定快捷键
+const handleEditorMount = (editor: any) => {
+  // 绑定 Ctrl+S / Cmd+S
+  editor.addCommand(2048 | 49, () => { // 2048 is Ctrl/Cmd, 49 is 'S' key code
+    handleLocalSave()
+  })
+}
+
+// 4. 本地暂存 (Ctrl+S)
+const handleLocalSave = () => {
+  if (!currentFilePath.value) return
+  
+  // 保存当前内容到暂存区
+  stagedFiles.value.set(currentFilePath.value, currentCode.value)
+  // 标记文件为已修改
+  modifiedKeys.value.add(currentFilePath.value)
+  
+  message.success({ content: '已暂存到本地 (Ctrl+S)', duration: 1 })
+}
+
+// 判断是否有未保存的更改
+const hasUnsavedChanges = (filePath: string) => {
+  return modifiedKeys.value.has(filePath)
+}
+
+// 5. 保存并运行 (提交到后端)
+const saveAndRunCode = async () => {
+  if (!currentFilePath.value) return
+  
+  isSaving.value = true
+  try {
+    const res = await updateAppCode({
+      appId: appId.value,
+      filePath: currentFilePath.value,
+      content: currentCode.value
+    })
+    
+    if (res.data.code === 0) {
+      message.success('保存成功，正在重新部署...')
+      // 清除该文件的暂存状态
+      modifiedKeys.value.delete(currentFilePath.value)
+      // 更新原始内容缓存
+      originalFileContent.value.set(currentFilePath.value, currentCode.value)
+      
+      // 强制刷新 iframe
+      const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
+      if (iframe) {
+        const currentSrc = iframe.src.split('?')[0]
+        iframe.src = `${currentSrc}?t=${Date.now()}`
+      }
+    } else {
+      message.error(res.data.message || '保存失败')
+    }
+  } catch (error) {
+    message.error('保存失败')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+// 6. 切换 Tab 时的处理
+const handleTabChange = (key: 'preview' | 'code') => {
+  activeTab.value = key
+  if (key === 'code') {
+    if (fileTreeData.value.length === 0) {
+      loadFileTree()
+    }
+  }
+}
+
 onMounted(() => {
   fetchAppInfo()
-
-  // 监听 iframe 消息
   window.addEventListener('message', (event) => {
     visualEditor.handleIframeMessage(event)
   })
 })
 
-// 清理资源
 onUnmounted(() => {
-  // EventSource 会在组件卸载时自动清理
 })
 </script>
 
@@ -977,7 +1212,7 @@ onUnmounted(() => {
 .main-content {
   flex: 1;
   display: flex;
-  gap: 20px;
+  /* 移除 gap，使用 margin 控制间距以实现平滑收起 */
   padding: 0;
   overflow: hidden;
 }
@@ -989,18 +1224,31 @@ onUnmounted(() => {
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  transition: all 0.3s ease;
-}
-
-.card-container:hover {
-  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease; 
 }
 
 /* 左侧对话区域 */
 .chat-section {
-  flex: 2;
+  flex: 2; /* 默认宽度比例 */
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  min-width: 0; /* 防止内容撑开 */
+  margin-right: 20px; /* 使用 margin 代替 gap */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+}
+
+/* 隐藏聊天区域的状态 */
+.chat-section.collapsed {
+  flex: 0 0 0;
+  width: 0;
+  margin-right: 0; /* 收起时 margin 也变为 0 */
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  border: none;
+  box-shadow: none; /* 确保阴影也消失 */
   overflow: hidden;
 }
 
@@ -1120,31 +1368,72 @@ onUnmounted(() => {
 
 /* 右侧预览区域 */
 .preview-section {
-  flex: 3;
+  flex: 3; /* 默认宽度比例 */
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 全屏状态 */
+.preview-section.expanded {
+  flex: 1;
 }
 
 .preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 16px 20px;
   border-bottom: 1px solid #e2e8f0;
   background: rgba(255, 255, 255, 0.5);
 }
 
-.preview-header h3 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: #1e293b;
+.header-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.tab-item {
+  padding: 6px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.tab-item:hover {
+  background: rgba(255, 255, 255, 0.5);
+  color: #3b82f6;
+}
+
+.tab-item.active {
+  background: white;
+  color: #3b82f6;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .preview-actions {
   display: flex;
+  align-items: center;
   gap: 12px;
+}
+
+.unsaved-tip {
+  font-size: 12px;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .preview-actions .ant-btn {
@@ -1153,11 +1442,21 @@ onUnmounted(() => {
   transition: all 0.3s ease !important;
 }
 
+.save-code-btn {
+  border-radius: 6px !important;
+}
+
 .preview-content {
   flex: 1;
   position: relative;
   overflow: hidden;
   background: white;
+  display: flex;
+}
+
+.preview-iframe-container {
+  width: 100%;
+  height: 100%;
 }
 
 .preview-placeholder {
@@ -1203,6 +1502,83 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
+/* 代码编辑器布局 */
+.code-editor-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: white;
+  overflow: hidden;
+}
+
+.file-tree-sidebar {
+  width: 240px;
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  padding: 10px 0;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+/* 树节点样式 */
+.tree-node-title {
+  display: flex;
+  align-items: center;
+}
+
+.modified-indicator {
+  color: #f59e0b; /* 橙色 */
+  margin-left: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.code-editor-main {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+
+.editor-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+}
+
+.editor-spin-wrapper {
+  height: 100%;
+  width: 100%;
+}
+
+.editor-spin-wrapper :deep(.ant-spin-container) {
+  height: 100%;
+}
+
+.empty-tree {
+  padding: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* 调整 Ant Tree 样式 */
+:deep(.ant-tree) {
+  background: transparent;
+}
+:deep(.ant-tree-node-content-wrapper) {
+  padding: 4px 0 !important;
+  transition: all 0.2s;
+}
+:deep(.ant-tree-node-selected .ant-tree-node-content-wrapper) {
+  background-color: #eff6ff !important;
+  color: #3b82f6;
+}
+
 .selected-element-alert {
   margin: 0 20px;
   border-radius: 12px;
@@ -1213,13 +1589,29 @@ onUnmounted(() => {
 @media (max-width: 1024px) {
   .main-content {
     flex-direction: column;
-    gap: 16px;
+  }
+
+  .chat-section {
+    margin-right: 0;
+    margin-bottom: 16px; /* 移动端改为底部间距 */
   }
 
   .chat-section,
   .preview-section {
     flex: none;
     height: 50vh;
+  }
+  
+  /* 移动端取消动画折叠逻辑，保持上下布局 */
+  .chat-section.collapsed {
+    flex: none;
+    height: 0;
+    margin: 0;
+    opacity: 0;
+  }
+  
+  .preview-section.expanded {
+    height: 80vh; /* 移动端代码编辑占更多屏 */
   }
 
   .header-bar {
@@ -1287,91 +1679,77 @@ onUnmounted(() => {
 
   .preview-header {
     padding: 16px;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  .preview-header h3 {
-    font-size: 15px;
+  .header-tabs {
+    width: 100%;
+    justify-content: center;
   }
 
   /* 选中元素信息样式 */
-.selected-element-alert {
-  margin: 0 20px;
-}
-
-.element-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.element-tag {
-  padding: 4px 10px;
-  background-color: #e6f4ff;
-  color: #3b82f6;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.element-id {
-  padding: 4px 8px;
-  background-color: #f5f5f5;
-  color: #666;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: monospace;
-}
-
-.element-class {
-  padding: 4px 8px;
-  background-color: #f5f5f5;
-  color: #666;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: monospace;
-}
-
-.element-details {
-  margin-top: 8px;
-  line-height: 1.6;
-}
-
-.element-item {
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: #333;
-}
-
-.element-selector-code {
-  background-color: #f0f0f0;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 12px;
-  color: #3b82f6;
-}
-
-  .selected-element-info {
-    line-height: 1.4;
+  .selected-element-alert {
+    margin: 0 20px;
   }
 
   .element-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .element-tag {
+    padding: 4px 10px;
+    background-color: #e6f4ff;
+    color: #3b82f6;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .element-id {
+    padding: 4px 8px;
+    background-color: #f5f5f5;
+    color: #666;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+
+  .element-class {
+    padding: 4px 8px;
+    background-color: #f5f5f5;
+    color: #666;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
   }
 
   .element-details {
     margin-top: 8px;
+    line-height: 1.6;
   }
 
   .element-item {
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     font-size: 13px;
+    color: #333;
   }
 
-  .element-item:last-child {
-    margin-bottom: 0;
+  .element-selector-code {
+    background-color: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #3b82f6;
+  }
+
+  .selected-element-info {
+    line-height: 1.4;
   }
 
   .element-tag {

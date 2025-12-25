@@ -8,6 +8,7 @@ import * as teamUserController from './teamUserController'
 import * as teamController from './teamController'
 import * as chatHistoryController from './chatHistoryController'
 import * as appController from './appController'
+import * as teamAppController from './teamAppController'
 import * as staticResourceController from './staticResourceController'
 import * as reviewResourceController from './reviewResourceController'
 import * as testController from './testController'
@@ -18,6 +19,7 @@ export default {
   teamController,
   chatHistoryController,
   appController,
+  teamAppController,
   staticResourceController,
   reviewResourceController,
   testController,

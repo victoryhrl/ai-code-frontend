@@ -71,6 +71,20 @@ export async function updateAppByAdmin(
   })
 }
 
+/** 此处后端没有提供注释 GET /app/build/status/${param0} */
+export async function getBuildStatus(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getBuildStatusParams,
+  options?: { [key: string]: any }
+) {
+  const { appId: param0, ...queryParams } = params
+  return request<API.BaseResponseMapStringObject>(`/app/build/status/${param0}`, {
+    method: 'GET',
+    params: { ...queryParams },
+    ...(options || {}),
+  })
+}
+
 /** 此处后端没有提供注释 GET /app/chat/gen/code */
 export async function chatToGenCode(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
@@ -82,6 +96,36 @@ export async function chatToGenCode(
     params: {
       ...params,
     },
+    ...(options || {}),
+  })
+}
+
+/** 此处后端没有提供注释 GET /app/code/content */
+export async function getAppCodeContent(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getAppCodeContentParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseString>('/app/code/content', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
+/** 此处后端没有提供注释 POST /app/code/update */
+export async function updateAppCode(
+  body: API.UpdateAppCodeRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>('/app/code/update', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
     ...(options || {}),
   })
 }
@@ -165,6 +209,21 @@ export async function listMyAppVoByPage(
       'Content-Type': 'application/json',
     },
     data: body,
+    ...(options || {}),
+  })
+}
+
+/** 此处后端没有提供注释 GET /app/tree */
+export async function getFileTree(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getFileTreeParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseListFileNode>('/app/tree', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
     ...(options || {}),
   })
 }

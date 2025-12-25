@@ -12,6 +12,7 @@ import ChatManagePage from '@/pages/admin/ChatManagePage.vue'
 import CreateTeam from '@/pages/team/CreateTeam.vue'
 import MyTeams from '@/pages/team/MyTeams.vue'
 import TeamDetail from '@/pages/team/TeamDetail.vue'
+import TeamAppChatPage from '@/pages/app/TeamAppChatPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,15 +27,15 @@ const router = createRouter({
       name: '用户登录',
       component: UserLoginPage,
     },
-    {   
-      path: '/user/register',      
-      name: '用户注册',      
-      component: UserRegisterPage,    
-    },    
-    {      
-      path: '/user/profile',     
-      name: '个人中心',      
-      component: UserProfilePage,    
+    {
+      path: '/user/register',
+      name: '用户注册',
+      component: UserRegisterPage,
+    },
+    {
+      path: '/user/profile',
+      name: '个人中心',
+      component: UserProfilePage,
     },
     {
       path: '/admin/userManage',
@@ -71,16 +72,22 @@ const router = createRouter({
       name: '创建团队',
       component: CreateTeam,
     },
-    {      
-      path: '/team/my',      
-      name: '我的团队',      
-      component: MyTeams,    
+    {
+      path: '/team/my',
+      name: '我的团队',
+      component: MyTeams,
     },
-    {      
-      path: '/team/detail/:id',      
-      name: '团队详情',      
-      component: TeamDetail,    
+    {
+      path: '/team/detail/:id',
+      name: '团队详情',
+      component: TeamDetail,
     },
+    {
+      path: '/team/:teamId/app/chat/:appId',
+      name: 'TeamAppChat',
+      component: TeamAppChatPage,
+      meta: { title: '团队协作' }
+    }
   ],
 })
 

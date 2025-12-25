@@ -10,6 +10,8 @@ export const DEPLOY_DOMAIN = '/api/static'
 // API 基础地址
 export const API_BASE_URL = '/api'
 
+export const WS_BASE_URL = 'ws://localhost:9500/api/ws'
+
 // 静态资源地址
 export const STATIC_BASE_URL = `${API_BASE_URL}/review`
 

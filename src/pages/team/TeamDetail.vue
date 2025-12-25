@@ -409,8 +409,8 @@ const handleCreateApp = async () => {
 
 // 查看应用函数
 const viewApp = () => {
-  if (appId.value) {
-    router.push(`/app/chat/${appId.value}`)
+  if (appId.value && teamId.value) {
+    router.push(`/team/${teamId.value}/app/chat/${appId.value}`)
   }
 }
 

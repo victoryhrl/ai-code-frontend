@@ -61,6 +61,12 @@ declare namespace API {
     message?: string
   }
 
+  type BaseResponseListFileNode = {
+    code?: number
+    data?: FileNode[]
+    message?: string
+  }
+
   type BaseResponseListTeamUserVO = {
     code?: number
     data?: TeamUserVO[]
@@ -76,6 +82,12 @@ declare namespace API {
   type BaseResponseLong = {
     code?: number
     data?: number
+    message?: string
+  }
+
+  type BaseResponseMapStringObject = {
+    code?: number
+    data?: Record<string, any>
     message?: string
   }
 
@@ -191,12 +203,31 @@ declare namespace API {
     workflowRequest: WorkflowRequest
   }
 
+  type FileNode = {
+    title?: string
+    key?: string
+    isLeaf?: boolean
+  }
+
+  type getAppCodeContentParams = {
+    appId: number
+    filePath: string
+  }
+
   type getAppVOByIdByAdminParams = {
     id: number
   }
 
   type getAppVOByIdParams = {
     id: number
+  }
+
+  type getBuildStatusParams = {
+    appId: number
+  }
+
+  type getFileTreeParams = {
+    appId: number
   }
 
   type getTeamUserVOByIdParams = {
@@ -376,6 +407,13 @@ declare namespace API {
     teamName?: string
   }
 
+  type teamChatToGenCodeParams = {
+    appId: number
+    teamId: number
+    message: string
+    isDeep: boolean
+  }
+
   type TeamCreateAppRequest = {
     id?: number
     prompt?: string
@@ -454,6 +492,12 @@ declare namespace API {
     editTime?: string
     updateTime?: string
     user?: UserVO
+  }
+
+  type UpdateAppCodeRequest = {
+    appId?: number
+    filePath?: string
+    content?: string
   }
 
   type User = {
